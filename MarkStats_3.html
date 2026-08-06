@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Analytics Terminal</title>
+<style>
+  :root{
+    --bg:#000; --panel:#0b0b0c; --panel2:#0f0f11; --line:#1c1c20;
+    --amber:#ff9e2c; --amberdim:#a5661a; --ink:#d7d7da; --dim:#6c6c72;
+    --grn:#39d98a; --red:#ff5b5b; --blue:#4aa8ff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--ink);
+    font-family:'Consolas','SF Mono','Menlo','DejaVu Sans Mono',monospace;
+    font-size:13px; line-height:1.4; padding:10px;}
+  a{color:var(--blue); text-decoration:none;} a:hover{text-decoration:underline;}
+  .topbar{display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--amberdim); padding:4px 8px 8px; margin-bottom:10px;}
+  .brand{color:var(--amber); font-weight:bold; letter-spacing:2px; font-size:15px;}
+  .brand .sub{color:var(--dim); font-weight:normal; letter-spacing:1px; font-size:11px; margin-left:10px;}
+  .clock{color:var(--amber); font-size:12px; letter-spacing:1px;}
+  .fnrow{display:flex; margin-bottom:10px; border:1px solid var(--line);}
+  .fnrow div{flex:1; text-align:center; padding:3px 0; font-size:11px; color:var(--dim);
+    border-right:1px solid var(--line); background:var(--panel);}
+  .fnrow div:last-child{border-right:none;}
+  .fnrow div b{color:var(--amber);}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .panel{border:1px solid var(--line); background:var(--panel);}
+  .phead{background:var(--panel2); color:var(--amber); font-size:11px; letter-spacing:1.5px;
+    padding:5px 8px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between;}
+  .phead .r{color:var(--dim);}
+  .pbody{padding:8px;}
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line);}
+  .stat{background:var(--panel); padding:8px 9px;}
+  .stat .k{color:var(--dim); font-size:10px; letter-spacing:1px; text-transform:uppercase;}
+  .stat .v{font-size:20px; font-weight:bold; margin-top:2px; letter-spacing:0.5px;}
+  .pos{color:var(--grn);} .neg{color:var(--red);} .amb{color:var(--amber);} .neu{color:var(--ink);}
+  .entry{display:flex; flex-wrap:wrap; gap:6px; align-items:flex-end;}
+  .entry label{color:var(--dim); font-size:10px; letter-spacing:1px;}
+  input,select{background:#050506; border:1px solid var(--line); color:var(--ink);
+    font-family:inherit; font-size:13px; padding:5px 7px; outline:none;}
+  input:focus,select:focus{border-color:var(--amber);}
+  input[type=number]{width:82px;}
+  #symbol{width:70px; text-transform:uppercase;} #date{width:78px;} #time{width:64px;} #tv{width:210px;}
+  button{background:#111; border:1px solid var(--amberdim); color:var(--amber);
+    font-family:inherit; font-size:12px; letter-spacing:1px; padding:6px 14px; cursor:pointer;}
+  button:hover{background:var(--amber); color:#000;}
+  button.ghost{border-color:var(--line); color:var(--dim);}
+  button.ghost:hover{background:var(--line); color:var(--ink);}
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{color:var(--amber); text-align:right; font-size:10px; letter-spacing:1px; font-weight:normal;
+    padding:4px 6px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); white-space:nowrap;}
+  th.l,td.l{text-align:left;}
+  td{padding:4px 6px; text-align:right; border-bottom:1px solid #101013; white-space:nowrap;}
+  tr:hover td{background:#101014;}
+  .del{color:var(--dim); cursor:pointer;} .del:hover{color:var(--red);}
+  .blotwrap{overflow-x:auto; max-height:300px; overflow-y:auto;}
+  .tag{padding:1px 6px; font-size:10px; letter-spacing:1px; border:1px solid;}
+  .tag.long{color:var(--grn); border-color:#1c5a3c;} .tag.short{color:var(--red); border-color:#5a1c1c;}
+  .hit{color:var(--grn);} .miss{color:#333;}
+  .chartbox{position:relative; height:230px; width:100%;}
+  .cfg{display:flex; gap:14px; align-items:center; flex-wrap:wrap;}
+  .foot{color:var(--dim); font-size:10px; letter-spacing:1px; text-align:center; margin-top:12px;
+    border-top:1px solid var(--line); padding-top:8px;}
+  .empty{color:var(--dim); text-align:center; padding:26px; font-size:12px; letter-spacing:1px;}
+  .tgt{display:grid; grid-template-columns:90px repeat(6,1fr); gap:1px; background:var(--line); font-size:12px;}
+  .tgt>div{background:var(--panel); padding:6px 8px; text-align:right;}
+  .tgt .h{color:var(--amber); font-size:10px; letter-spacing:1px; text-align:right;}
+  .tgt .rowlab{color:var(--dim); font-size:10px; letter-spacing:1px; text-align:left;}
+  .cl{display:grid; grid-template-columns:110px repeat(6,1fr); gap:1px; background:var(--line); font-size:12px;}
+  .cl>div{background:var(--panel); padding:5px 8px; text-align:right;}
+  .cl .h{color:var(--amber); font-size:10px; letter-spacing:1px; text-align:right;}
+  .cl .rowlab{color:var(--dim); font-size:10px; letter-spacing:1px; text-align:left;}
+  .cl .z{color:#2a2a2e;} .cl .n{color:var(--ink);} .cl .bad{color:var(--red);}
+  ::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:var(--line);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">&#9700; TRADE ANALYTICS TERMINAL <span class="sub">MAX-REWARD MODEL &middot; PER-TARGET EXPECTANCY</span></div>
+  <div class="clock" id="clock">--:--:-- UTC</div>
+</div>
+
+<div class="fnrow">
+  <div><b>F1</b> ENTRY</div><div><b>F2</b> TARGETS</div><div><b>F3</b> STATS</div>
+  <div><b>F4</b> EQUITY</div><div><b>F5</b> BLOTTER</div><div><b>ESC</b> CLEAR</div>
+</div>
+
+<div class="panel" style="margin-bottom:10px;">
+  <div class="phead"><span>&#9702; TRADE ENTRY</span><span class="r">LOG MAX REWARD &middot; TARGETS AUTO-FLAG</span></div>
+  <div class="pbody">
+    <div class="cfg" style="margin-bottom:10px;">
+      <label>ACCOUNT $</label><input type="number" id="acct" value="50000" step="1000">
+      <label>RISK %</label><input type="number" id="risk" value="1" step="0.25">
+      <span style="color:var(--dim);font-size:10px;letter-spacing:1px;">RISK/TRADE = <span class="amb" id="riskusd">$500</span></span>
+      <span style="color:var(--dim);font-size:10px;letter-spacing:1px;margin-left:8px;">TARGETS: 2 / 3 / 5 / 7 / 10 / 12 R</span>
+    </div>
+    <div class="entry">
+      <div><label>DATE</label><br><input id="date" placeholder="7/24"></div>
+      <div><label>TIME</label><br><input id="time" placeholder="736"></div>
+      <div><label>SYMBOL</label><br><input id="symbol" value="NQ" maxlength="8"></div>
+      <div><label>SIDE</label><br><select id="side"><option>LONG</option><option>SHORT</option></select></div>
+      <div><label>MAX REWARD (R)</label><br><input type="number" id="maxr" step="0.01" placeholder="2.85"></div>
+      <div><label>TRADINGVIEW LINK</label><br><input id="tv" placeholder="https://www.tradingview.com/x/..."></div>
+      <div><label>NOTE</label><br><input id="note" style="width:120px" placeholder="optional"></div>
+      <div><button onclick="addTrade()">&#9650; LOG</button></div>
+      <div><button class="ghost" onclick="loadSample()">SAMPLE</button></div>
+      <div><button class="ghost" onclick="clearAll()">CLEAR</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel" style="margin-bottom:10px;">
+  <div class="phead"><span>&#9702; PER-TARGET ANALYSIS</span><span class="r" id="ncount">0 TRADES</span></div>
+  <div class="pbody"><div class="tgt" id="tgt"></div></div>
+</div>
+
+<div class="panel" style="margin-bottom:10px;">
+  <div class="phead"><span>&#9702; CONSECUTIVE LOSSES</span><span class="r">STREAK COUNT BY TARGET &middot; CAP 7</span></div>
+  <div class="pbody"><div class="cl" id="cl"></div></div>
+</div>
+
+<div class="panel" style="margin-bottom:10px;">
+  <div class="phead"><span>&#9702; SUMMARY</span><span class="r" id="bestnote"></span></div>
+  <div class="stats" id="stats"></div>
+</div>
+
+<div class="grid" style="margin-bottom:10px;">
+  <div class="panel">
+    <div class="phead"><span>&#9702; EXPECTANCY BY TARGET</span><span class="r">R PER TRADE</span></div>
+    <div class="pbody"><div class="chartbox"><canvas id="expc"></canvas></div></div>
+  </div>
+  <div class="panel">
+    <div class="phead"><span>&#9702; WIN RATE BY TARGET</span><span class="r">% HIT</span></div>
+    <div class="pbody"><div class="chartbox"><canvas id="wrc"></canvas></div></div>
+  </div>
+</div>
+
+<div class="panel" style="margin-bottom:10px;">
+  <div class="phead"><span>&#9702; EQUITY CURVE</span><span class="r" id="eqsel">TARGET: 5R</span></div>
+  <div class="pbody">
+    <div style="margin-bottom:8px; color:var(--dim); font-size:10px; letter-spacing:1px;">
+      EQUITY MODELLED AT TARGET:
+      <select id="eqtarget" style="margin-left:6px;">
+        <option value="2">2R</option><option value="3">3R</option><option value="5" selected>5R</option>
+        <option value="7">7R</option><option value="10">10R</option><option value="12">12R</option>
+      </select>
+      <span style="margin-left:8px;">(hit target = +TR, missed = &minus;1R)</span>
+    </div>
+    <div class="chartbox" style="height:220px;"><canvas id="eq"></canvas></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="phead"><span>&#9702; TRADE BLOTTER</span><span class="r">MOST RECENT FIRST &middot; CLICK LINK TO REVIEW</span></div>
+  <div class="blotwrap">
+    <table>
+      <thead><tr>
+        <th class="l">#</th><th class="l">DATE</th><th class="l">TIME</th><th class="l">SYM</th><th class="l">SIDE</th>
+        <th>MAX R</th>
+        <th>2</th><th>3</th><th>5</th><th>7</th><th>10</th><th>12</th>
+        <th class="l">CHART</th><th class="l">NOTE</th><th></th>
+      </tr></thead>
+      <tbody id="blot"></tbody>
+    </table>
+  </div>
+  <div id="emptymsg" class="empty">NO TRADES LOGGED &mdash; CLICK "SAMPLE" TO POPULATE, OR LOG YOUR FIRST TRADE ABOVE</div>
+</div>
+
+<div class="foot">TRADE ANALYTICS TERMINAL &middot; MAX-REWARD &#8594; PER-TARGET EXPECTANCY &middot; DATA STORED LOCALLY ON THIS DEVICE</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const TARGETS=[2,3,5,7,10,12];
+const KEY="tat2_trades", CKEY="tat2_cfg";
+let mem={};
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){mem[k]=v;}}
+function load(k,d){try{const s=localStorage.getItem(k);return s?JSON.parse(s):(mem[k]??d);}catch(e){return mem[k]??d;}}
+
+let trades=load(KEY,[]);
+let cfg=load(CKEY,{acct:50000,risk:1});
+document.getElementById('acct').value=cfg.acct;
+document.getElementById('risk').value=cfg.risk;
+
+function tick(){const d=new Date();document.getElementById('clock').textContent=d.toUTCString().split(' ')[4]+' UTC';}
+setInterval(tick,1000);tick();
+
+function riskUsd(){return (+cfg.acct||0)*(+cfg.risk||0)/100;}
+function syncCfg(){cfg.acct=+document.getElementById('acct').value||0;cfg.risk=+document.getElementById('risk').value||0;save(CKEY,cfg);render();}
+document.getElementById('acct').addEventListener('input',syncCfg);
+document.getElementById('risk').addEventListener('input',syncCfg);
+document.getElementById('eqtarget').addEventListener('change',render);
+
+function addTrade(){
+  const mr=parseFloat(document.getElementById('maxr').value);
+  if(isNaN(mr)){document.getElementById('maxr').focus();return;}
+  trades.push({
+    date:document.getElementById('date').value||'',
+    time:document.getElementById('time').value||'',
+    sym:(document.getElementById('symbol').value||'-').toUpperCase(),
+    side:document.getElementById('side').value,
+    maxr:mr,
+    tv:document.getElementById('tv').value.trim(),
+    note:document.getElementById('note').value||''
+  });
+  ['maxr','tv','note'].forEach(id=>document.getElementById(id).value='');
+  save(KEY,trades);render();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && ['maxr','tv','note','date','time'].includes(document.activeElement.id)) addTrade();
+  if(e.key==='Escape') clearAll();
+});
+function delTrade(i){trades.splice(i,1);save(KEY,trades);render();}
+function clearAll(){if(trades.length&&!confirm('Clear all trades?'))return;trades=[];save(KEY,trades);render();}
+function loadSample(){
+  trades=[
+    {date:'7/24',time:'736',sym:'NQ',side:'LONG',maxr:2.85,tv:'https://www.tradingview.com/x/0qSbhzjN/',note:''},
+    {date:'7/27',time:'701',sym:'NQ',side:'LONG',maxr:21.15,tv:'https://www.tradingview.com/x/G5lZ0qsx/',note:'runner'},
+    {date:'7/30',time:'641',sym:'NQ',side:'LONG',maxr:6.57,tv:'https://www.tradingview.com/x/bav2YKiA/',note:''},
+    {date:'7/31',time:'651',sym:'NQ',side:'LONG',maxr:5.32,tv:'https://www.tradingview.com/x/5qVFFp00/',note:''},
+    {date:'8/3', time:'725',sym:'NQ',side:'LONG',maxr:2.06,tv:'https://www.tradingview.com/x/UnzM8o5N/',note:''},
+    {date:'8/4', time:'701',sym:'NQ',side:'LONG',maxr:18.71,tv:'https://www.tradingview.com/x/GQNV3yBl/',note:'runner'},
+    {date:'8/5', time:'712',sym:'NQ',side:'LONG',maxr:3.34,tv:'https://www.tradingview.com/x/LVhmZiBL/',note:''},
+    {date:'8/6', time:'721',sym:'NQ',side:'SHORT',maxr:0.48,tv:'https://www.tradingview.com/x/mOca8d8l/',note:'stopped'},
+    {date:'8/6', time:'735',sym:'NQ',side:'LONG',maxr:2.46,tv:'https://www.tradingview.com/x/SdItEYic/',note:''}
+  ];
+  save(KEY,trades);render();
+}
+
+function rAt(maxr,t){ return maxr>=t ? t : -1; }
+
+function perTarget(){
+  const n=trades.length;
+  return TARGETS.map(t=>{
+    let hits=0,sum=0;
+    trades.forEach(tr=>{ const r=rAt(tr.maxr,t); if(r>0)hits++; sum+=r; });
+    return {t, hits, wr:n?hits/n*100:0, exp:n?sum/n:0, totR:sum};
+  });
+}
+
+function renderTargets(pt){
+  const el=document.getElementById('tgt');
+  const head='<div class="rowlab"></div>'+TARGETS.map(t=>'<div class="h">'+t+'R</div>').join('');
+  const row=(lab,fn)=>'<div class="rowlab">'+lab+'</div>'+pt.map(fn).join('');
+  el.innerHTML=head+
+    row('EXPECT', p=>'<div class="'+(p.exp>=0?'pos':'neg')+'">'+(p.exp>=0?'+':'')+p.exp.toFixed(2)+'R</div>')+
+    row('WIN %',  p=>'<div class="amb">'+p.wr.toFixed(0)+'%</div>')+
+    row('R RETURN',p=>'<div class="'+(p.totR>=0?'pos':'neg')+'">'+(p.totR>=0?'+':'')+p.totR.toFixed(1)+'</div>')+
+    row('HITS',   p=>'<div class="neu">'+p.hits+'/'+trades.length+'</div>');
+  document.getElementById('ncount').textContent=trades.length+' TRADE'+(trades.length===1?'':'S');
+  if(trades.length){
+    const best=pt.slice().sort((a,b)=>b.exp-a.exp)[0];
+    document.getElementById('bestnote').textContent='BEST: '+best.t+'R @ +'+best.exp.toFixed(2)+'R';
+  } else document.getElementById('bestnote').textContent='';
+}
+
+function renderStats(pt){
+  const n=trades.length, ru=riskUsd();
+  const maxrs=trades.map(t=>t.maxr);
+  const avgMax=n?maxrs.reduce((a,b)=>a+b,0)/n:0;
+  const bigMax=n?Math.max.apply(null,maxrs):0;
+  const reach2=n?trades.filter(t=>t.maxr>=2).length/n*100:0;
+  const best=n?pt.slice().sort((a,b)=>b.exp-a.exp)[0]:{t:0,exp:0};
+  const cell=(k,v,cls)=>'<div class="stat"><div class="k">'+k+'</div><div class="v '+cls+'">'+v+'</div></div>';
+  const e5=pt[2]?pt[2].exp:0, t5=pt[2]?pt[2].totR:0;
+  document.getElementById('stats').innerHTML=
+    cell('TRADES', n, 'neu')+
+    cell('AVG MAX REWARD', avgMax.toFixed(2)+'R', 'amb')+
+    cell('BIGGEST RUNNER', '+'+bigMax.toFixed(1)+'R', 'pos')+
+    cell('REACHED &ge;2R', reach2.toFixed(0)+'%', 'amb')+
+    cell('BEST TARGET', best.t+'R', 'amb')+
+    cell('BEST EXPECT', '+'+best.exp.toFixed(2)+'R', 'pos')+
+    cell('R/TRADE @5R', (e5>=0?'+':'')+e5.toFixed(2)+'R', e5>=0?'pos':'neg')+
+    cell('NET $ @5R', (t5>=0?'+$':'-$')+Math.abs(Math.round(t5*ru)).toLocaleString(), t5>=0?'pos':'neg');
+  document.getElementById('riskusd').textContent='$'+Math.round(ru).toLocaleString();
+}
+
+function renderBlotter(){
+  const body=document.getElementById('blot'), em=document.getElementById('emptymsg');
+  if(!trades.length){body.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  body.innerHTML=trades.map((t,i)=>({...t,i})).slice().reverse().map(t=>{
+    const flags=TARGETS.map(tg=> t.maxr>=tg?'<td class="hit">1</td>':'<td class="miss">0</td>').join('');
+    const link=t.tv?'<a href="'+t.tv+'" target="_blank">view &#9656;</a>':'<span style="color:#333">-</span>';
+    return '<tr>'+
+      '<td class="l" style="color:var(--dim)">'+(t.i+1)+'</td>'+
+      '<td class="l">'+(t.date||'')+'</td>'+
+      '<td class="l" style="color:var(--dim)">'+(t.time||'')+'</td>'+
+      '<td class="l" style="color:var(--amber)">'+t.sym+'</td>'+
+      '<td class="l"><span class="tag '+(t.side==='LONG'?'long':'short')+'">'+t.side+'</span></td>'+
+      '<td class="'+(t.maxr>=2?'pos':(t.maxr<1?'neg':'neu'))+'">'+t.maxr.toFixed(2)+'R</td>'+
+      flags+
+      '<td class="l">'+link+'</td>'+
+      '<td class="l" style="color:var(--dim)">'+(t.note||'')+'</td>'+
+      '<td><span class="del" onclick="delTrade('+t.i+')">&#10005;</span></td>'+
+    '</tr>';
+  }).join('');
+}
+
+let expChart,wrChart,eqChart;
+const GRID='#17171a', TICK='#6c6c72';
+function renderCharts(pt){
+  if(expChart)expChart.destroy();
+  expChart=new Chart(document.getElementById('expc'),{
+    type:'bar',
+    data:{labels:TARGETS.map(t=>t+'R'),datasets:[{data:pt.map(p=>+p.exp.toFixed(2)),
+      backgroundColor:pt.map(p=>p.exp>=0?'#39d98a':'#ff5b5b'),borderRadius:3,barThickness:30}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(2)+'R/trade'}}},
+      scales:{y:{grid:{color:GRID},ticks:{color:TICK,callback:v=>(v>=0?'+':'')+v+'R'}},
+              x:{grid:{display:false},ticks:{color:TICK}}}}
+  });
+  if(wrChart)wrChart.destroy();
+  wrChart=new Chart(document.getElementById('wrc'),{
+    type:'bar',
+    data:{labels:TARGETS.map(t=>t+'R'),datasets:[{data:pt.map(p=>+p.wr.toFixed(0)),
+      backgroundColor:'#ff9e2c',borderRadius:3,barThickness:30}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(0)+'% hit'}}},
+      scales:{y:{grid:{color:GRID},ticks:{color:TICK,callback:v=>v+'%'},suggestedMax:100,beginAtZero:true},
+              x:{grid:{display:false},ticks:{color:TICK}}}}
+  });
+  const tg=+document.getElementById('eqtarget').value, ru=riskUsd();
+  let cum=0; const eq=[0]; trades.forEach(t=>{cum+=rAt(t.maxr,tg); eq.push(cum);});
+  document.getElementById('eqsel').textContent='TARGET: '+tg+'R';
+  if(eqChart)eqChart.destroy();
+  eqChart=new Chart(document.getElementById('eq'),{
+    type:'line',
+    data:{labels:eq.map((_,i)=>i),datasets:[{data:eq,borderColor:'#ff9e2c',borderWidth:2,
+      pointRadius:0,pointHoverRadius:4,fill:true,backgroundColor:'rgba(255,158,44,0.07)',tension:0.04}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:it=>'Trade #'+it[0].label,
+        label:c=>'Cum '+(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(1)+'R  ('+
+          (c.parsed.y>=0?'+$':'-$')+Math.abs(Math.round(c.parsed.y*ru)).toLocaleString()+')'}}},
+      scales:{y:{grid:{color:GRID},ticks:{color:TICK,callback:v=>(v>=0?'+':'')+v+'R'}},
+              x:{grid:{display:false},ticks:{color:TICK}}}}
+  });
+}
+
+function consecLoss(){
+  // for each target: array idx 1..7 of streak counts (exactly-N, 7 = "7 or more")
+  return TARGETS.map(t=>{
+    const rows=[0,0,0,0,0,0,0,0]; // idx 0 unused
+    let run=0;
+    trades.forEach(tr=>{
+      const loss = tr.maxr < t;          // missed this target = a loss at this target
+      if(loss){ run++; }
+      else if(run>0){ rows[Math.min(run,7)]++; run=0; }
+    });
+    if(run>0) rows[Math.min(run,7)]++;   // close a trailing streak
+    return rows;
+  });
+}
+
+function renderConsec(){
+  const cls=consecLoss();
+  const el=document.getElementById('cl');
+  const head='<div class="rowlab">STREAK</div>'+TARGETS.map(t=>'<div class="h">'+t+'R</div>').join('');
+  let body='';
+  for(let s=1;s<=7;s++){
+    const lab=(s===7?'7+':(''+s));
+    body+='<div class="rowlab">'+lab+' LOSS'+(s===1?'':'ES')+'</div>'+
+      cls.map(col=>{
+        const v=col[s];
+        const cls2 = v===0?'z':(s>=5?'bad':'n');   // flag long streaks red
+        return '<div class="'+cls2+'">'+v+'</div>';
+      }).join('');
+  }
+  el.innerHTML=head+body;
+}
+
+function render(){const pt=perTarget();renderConsec();renderTargets(pt);renderStats(pt);renderBlotter();renderCharts(pt);}
+render();
+</script>
+</body>
+</html>
